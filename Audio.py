@@ -17,8 +17,12 @@ class Audio:
         params = wave_read.getparams()
         frame = np.copy(wave_read.readframes(n))
         frame = np.frombuffer(frame, dtype=np.int16)
+
         wave_read.close()
         return params, frame
+
+    def getkey(self, nums):
+        return self.frame[0:int(nums/16)]
 
     def write_to_file(self, frame, name):
         wave_write = wave.open(name, "wb")

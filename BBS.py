@@ -17,7 +17,7 @@ class BBS:
         else:
             self.p, self.q, self.x_0 = p, q, x_0
         self.M = self.p * self.q
-        self.x_current = int(self.x_0 ** 2 % self.M)
+        self.x_current = int(self.x_0)
 
     @staticmethod
     def check_find_pq(p, q):
@@ -31,7 +31,7 @@ class BBS:
     @staticmethod
     def check_find_x_0(x_0):
         if x_0 is None:
-            x_0 = np.frombuffer(get_random_bytes(4), np.uint32)[0]
+            x_0 = np.frombuffer(get_random_bytes(2), np.uint16)[0]
         return x_0
 
     def __str__(self):
@@ -43,16 +43,17 @@ q = {}
 x_current = {}'''.format(self.x_0, self.p, self.q, self.x_current)
 
     def countn(self, n=1):
-        result = [int(self.x_current ** 2 % self.M), ]
+        sample = int(self.x_current ** 2 % self.M)
+        result = [sample, ]
         for i in range(1, n):
-            result.append(result[-1] ** 2 % self.M)
-        self.x_current = result[-1]
+            sample = (sample**2 % self.M)
+            result.append(sample)
+        self.x_current = sample
         return result
 
     def getdigit(self, n_bytes=4):
-        global types
         lst = [str(bin(i).count('1') % 2) for i in self.countn(n_bytes * 8)]
-        return utypes[n_bytes](int('0b' + ''.join(lst), base=2))
+        return np.uint32(int('0b' + ''.join(lst), base=2))
 
     def getndigits(self, n, size):
         return [self.getdigit(size) for i in range(n)]
