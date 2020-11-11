@@ -27,18 +27,22 @@ class Cryptographer:
 
     def encrypt(self, text, filename, publicKey : rsa.PublicKey):
         n_symbols = len(text)
-        st = ""
+
+        sesskey = "{} {}".format(len(text), self.alg.get_key()).encode('utf-8')
+        sesskey = rsa.encrypt(sesskey, pub_key=publicKey)
+        sess_array = np.frombuffer(sesskey, dtype=np.uint8)
+        for i in range(len(sess_array)):
+            indx = int(i * self.frame_size / len(sess_array))
+            self.frame[indx % self.stride][type(indx)(indx / self.stride)] = np.int16(sess_array[i])
+            opg.add(indx)
+
         for i in range(n_symbols):
-            st += self.encrypt_symbol(text[i]) + " "
+            self.encrypt_symbol(text[i])
         self.frame = np.reshape(self.frame, (1, self.frame_size))[0]
         if not len(self.tail) == 0:
             self.frame = list(self.frame) + list(self.tail)
         self.frame = np.array(self.frame, dtype=np.int16)
-        sesskey = "{} {}".format(len(text), self.alg.get_key()).encode('utf-8')
-        sesskey = rsa.encrypt(sesskey, pub_key=publicKey)
-        self.frame[0:len(np.frombuffer(sesskey, dtype=np.int16))] = np.frombuffer(sesskey, dtype=np.int16)
         self.write_frame(filename)
-        return st
 
     def encrypt_symbol(self, symbol):
         answer = ''
@@ -48,7 +52,7 @@ class Cryptographer:
             while indx in opg or indx < 1000:
                 indx = self.alg.getdigit(n_bytes=4) % self.frame_size
             opg.add(indx)
-            com_ind.append(indx)
+
             label = indx % self.stride
             column = type(indx)(indx / self.stride)
             self.frame[label][column] = np.int16(self.frame[label][column] & 0xfff0) | np.int16(int(i, base=16))
@@ -58,7 +62,17 @@ class Cryptographer:
     def write_frame(self, name):
         self.audio.write_to_file(self.frame, name=name)
 
-    def decode(self):
+    def decode(self, privateKey):
+        key = []
+        for i in range(64):
+            indx = int((i * self.frame_size / 64))
+            key.append(np.uint8(self.frame[indx % self.stride][type(indx)(indx / self.stride)]))
+            wr_opg.add(indx)
+        session_key = rsa.decrypt(bytes(key), privateKey)
+        session_key = session_key.decode('utf-8')
+        self.alg = BBS(key=session_key.split(' ')[1:])
+        self.msglen = int(session_key.split(' ')[0])
+
         n_symbols = self.msglen
         string = ''
         for i in range(n_symbols):
