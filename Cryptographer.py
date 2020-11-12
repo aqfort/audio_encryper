@@ -31,10 +31,12 @@ class Cryptographer:
         sesskey = "{} {}".format(len(text), self.alg.get_key()).encode('ascii')
         sesskey = rsa.encrypt(sesskey, pub_key=publicKey)
         sess_array = np.frombuffer(sesskey, dtype=np.uint8)
-        for i in range(len(sess_array)):
-            indx = int(i * self.frame_size / len(sess_array))
-            self.frame[indx % self.stride][type(indx)(indx / self.stride)] = np.int16(sess_array[i])
+        for i in range(1, len(sess_array)+1):
+            indx = int(i * self.frame_size / (len(sess_array)+1))
+            self.frame[indx % self.stride][type(indx)(indx / self.stride)] = self.frame[(indx-1) % self.stride][type(indx)((indx-1) / self.stride)] - np.int16(sess_array[i-1])
             opg.add(indx)
+            opg.add(indx-1)
+
 
         for i in range(n_symbols):
             self.encrypt_symbol(text[i])
@@ -64,10 +66,11 @@ class Cryptographer:
 
     def decode(self, privateKey):
         key = []
-        for i in range(64):
-            indx = int((i * self.frame_size / 64))
-            key.append(np.uint8(self.frame[indx % self.stride][type(indx)(indx / self.stride)]))
+        for i in range(1, 65):
+            indx = int((i * self.frame_size / 65))
+            key.append(np.uint8(self.frame[(indx-1) % self.stride][type(indx)((indx-1) / self.stride)]-self.frame[indx % self.stride][type(indx)(indx / self.stride)]))
             wr_opg.add(indx)
+            wr_opg.add(indx-1)
         session_key = rsa.decrypt(bytes(key), privateKey)
         session_key = session_key.decode(self.coding)
         self.alg = BBS(key=session_key.split(' ')[1:])
