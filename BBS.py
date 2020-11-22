@@ -22,7 +22,7 @@ class BBS:
     @staticmethod
     def check_find_pq(p, q):
         if p is None or q is None:
-            p, q = rsa.key.find_p_q(16)
+            p, q = rsa.key.find_p_q(32)
         return p, q
 
     def get_key(self):
@@ -31,7 +31,7 @@ class BBS:
     @staticmethod
     def check_find_x_0(x_0):
         if x_0 is None:
-            x_0 = np.frombuffer(get_random_bytes(2), np.uint16)[0]
+            x_0 = np.frombuffer(get_random_bytes(4), np.uint16)[0]
         return x_0
 
     def __str__(self):
